@@ -6,7 +6,7 @@ import * as cwlogs from "aws-cdk-lib/aws-logs"
 import * as cognito from "aws-cdk-lib/aws-cognito"
 import * as lambda from "aws-cdk-lib/aws-lambda"
 import {Construct} from "constructs"
-import { Authorization } from "aws-cdk-lib/aws-events"
+
 interface CineconnectApiStackProps extends cdk.StackProps{
     profilesFetchHandler: lambdaNodeJS.NodejsFunction
     profilesAdminHandler: lambdaNodeJS.NodejsFunction
@@ -19,7 +19,7 @@ export class CineconnectApiStack extends cdk.Stack{
 
     constructor(scope:Construct,id:string,props: CineconnectApiStackProps ){
         super(scope,id,props)
-
+     
         const logGroup = new cwlogs.LogGroup(this,"CineconnectApiLogs")
         const api = new apigateway.RestApi(this,"CineconnectApi",{
             restApiName:"CineconnectApi",
@@ -40,34 +40,12 @@ export class CineconnectApiStack extends cdk.Stack{
                 })
             }
         })
-
-        const profilesFetchIntegration = new apigateway.LambdaIntegration(props.profilesFetchHandler)
-
-        const profilesFetchWebMobileIntegration = {
-            Authorizer:this.profilesAuthorizer,
-            authorizationType:apigateway.AuthorizationType.COGNITO,
-            authorizationScopes:['customer/web','customer/mobile']
-        }
+    
         this.createCognitoAuth() 
-
-        //GET "/profiles"
-        const profilesResource = api.root.addResource("profiles")
-        profilesResource.addMethod("GET",profilesFetchIntegration,profilesFetchWebMobileIntegration)
-
-         //GET "/profiles/{id}"
-         const profileIdResource = profilesResource.addResource("{id}")
-         profileIdResource.addMethod("GET",profilesFetchIntegration,profilesFetchWebMobileIntegration)
-
-         const profilesAdminIntegration = new apigateway.LambdaIntegration(props.profilesAdminHandler)
-//================================================================ //
-         // POST /profiles
-         profilesResource.addMethod("POST",profilesAdminIntegration,profilesFetchWebMobileIntegration)
-         //PUT /profiles/{id}
-         profileIdResource.addMethod("PUT",profilesAdminIntegration,profilesFetchWebMobileIntegration)
-         //DELETE /profiles/{id}
-         profileIdResource.addMethod("DELETE",profilesAdminIntegration,profilesFetchWebMobileIntegration)
+     
+    
+        this.createProfilesService(props, api)
     }
-
     private createCognitoAuth(){
 
         const postConfirmationHandler = new lambdaNodeJS.NodejsFunction(this,"PostConfirmationFunction",{
@@ -195,5 +173,34 @@ export class CineconnectApiStack extends cdk.Stack{
             authorizerName:"ProfilesAuthorizer",
             cognitoUserPools:[this.customerPool]
         })
+
     }
+
+    private createProfilesService(props: CineconnectApiStackProps, api: apigateway.RestApi) {
+        const profilesFetchIntegration = new apigateway.LambdaIntegration(props.profilesFetchHandler)
+        const profilesFetchWebMobileIntegration = {
+            Authorizer:this.profilesAuthorizer,
+            authorizationType:apigateway.AuthorizationType.COGNITO,
+            authorizationScopes:['customer/web','customer/mobile']
+        }
+
+        //GET "/profiles"
+        const profilesResource = api.root.addResource("profiles")
+        profilesResource.addMethod("GET", profilesFetchIntegration, profilesFetchWebMobileIntegration)
+
+        //GET "/profiles/{id}"
+        const profileIdResource = profilesResource.addResource("{id}")
+        profileIdResource.addMethod("GET", profilesFetchIntegration, profilesFetchWebMobileIntegration)
+
+        const profilesAdminIntegration = new apigateway.LambdaIntegration(props.profilesAdminHandler)
+        //================================================================ //
+        // POST /profiles
+        profilesResource.addMethod("POST", profilesAdminIntegration, profilesFetchWebMobileIntegration)
+        //PUT /profiles/{id}
+        profileIdResource.addMethod("PUT", profilesAdminIntegration, profilesFetchWebMobileIntegration)
+        //DELETE /profiles/{id}
+        profileIdResource.addMethod("DELETE", profilesAdminIntegration, profilesFetchWebMobileIntegration)
+    }
+
+
 }
