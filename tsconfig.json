@@ -22,7 +22,13 @@
     "strictPropertyInitialization": false,
     "typeRoots": [
       "./node_modules/@types"
-    ]
+    ],
+    "baseUrl": "./",
+    "paths": {
+      "/op/nodejs/profilesLayer":[
+        "lambda/profiles/layers/profilesLayer/nodejs/profileRepository"
+      ],
+    }
   },
   "exclude": [
     "node_modules",
